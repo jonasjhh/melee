@@ -1,4 +1,4 @@
-import { Unit, SkillType } from './types.js';
+import { Unit, ActionCommand } from './types.js';
 import { createHero, createSkeleton } from './unit.js';
 import { getSkeletonAction } from './ai.js';
 import {
@@ -24,7 +24,7 @@ export interface GameState {
 /**
  * Strategy for getting the next action for a unit
  */
-export type ActionStrategy = (state: GameState) => SkillType;
+export type ActionStrategy = (state: GameState) => ActionCommand;
 
 /**
  * Configuration for the game orchestrator
@@ -86,7 +86,7 @@ export function createGame(config: GameOrchestratorConfig = {}): GameState {
  */
 export function executeAction(
   state: GameState,
-  action: SkillType,
+  command: ActionCommand,
   config: GameOrchestratorConfig = {}
 ): GameState {
   if (state.gameOver) {
@@ -95,19 +95,19 @@ export function executeAction(
 
   // Default defender strategy is the skeleton AI
   const defenderStrategy =
-    config.defenderStrategy || ((_s: GameState) => getSkeletonAction());
+    config.defenderStrategy || getSkeletonAction;
 
   // Convert to battle state and execute action
   let battleState = gameStateToBattleState(state);
-  battleState = executeBattleAction(battleState, action, config.battleConfig);
+  battleState = executeBattleAction(battleState, command, config.battleConfig);
 
   // If it's now defender's turn and game is not over, execute AI action
   if (battleState.currentTurn === 'defender' && !battleState.gameOver) {
     const gameState = battleStateToGameState(battleState);
-    const defenderAction = defenderStrategy(gameState);
+    const defenderCommand = defenderStrategy(gameState);
     battleState = executeBattleAction(
       battleState,
-      defenderAction,
+      defenderCommand,
       config.battleConfig
     );
   }

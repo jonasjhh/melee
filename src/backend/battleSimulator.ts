@@ -1,4 +1,4 @@
-import { Unit, SkillType } from './types.js';
+import { Unit, ActionCommand } from './types.js';
 
 export interface BattleState {
   attacker: Unit;
@@ -38,12 +38,21 @@ export function createBattle(
 }
 
 /**
+ * Helper function to get a unit by ID
+ */
+function getUnitById(state: BattleState, id: string): Unit {
+  if (state.attacker.id === id) return state.attacker;
+  if (state.defender.id === id) return state.defender;
+  throw new Error(`Unit ${id} not found`);
+}
+
+/**
  * Executes a single action in the battle
  * This is pure battle logic - no AI, no side effects
  */
 export function executeBattleAction(
   state: BattleState,
-  action: SkillType,
+  command: ActionCommand,
   config: Partial<BattleConfig> = {}
 ): BattleState {
   if (state.gameOver) {
@@ -60,16 +69,17 @@ export function executeBattleAction(
 
   const activeUnit =
     newState.currentTurn === 'attacker' ? newState.attacker : newState.defender;
-  const targetUnit =
-    newState.currentTurn === 'attacker' ? newState.defender : newState.attacker;
 
-  switch (action) {
+  switch (command.skill) {
     case 'skip':
       newState.log.push(`${activeUnit.name} skipped their turn.`);
       activeUnit.isDefending = false;
       break;
 
     case 'attack': {
+      const targetId = command.targets[0];
+      const targetUnit = getUnitById(newState, targetId);
+
       let damage = fullConfig.attackDamage;
       if (targetUnit.isDefending) {
         damage = Math.floor(damage * fullConfig.defendDamageReduction);
@@ -91,6 +101,21 @@ export function executeBattleAction(
       activeUnit.isDefending = true;
       newState.log.push(`${activeUnit.name} takes a defensive stance.`);
       break;
+
+    case 'heal': {
+      const targetId = command.targets[0];
+      const targetUnit = getUnitById(newState, targetId);
+      const healAmount = 30;
+      const actualHeal = Math.min(healAmount, targetUnit.maxHealth - targetUnit.health);
+
+      targetUnit.health += actualHeal;
+
+      newState.log.push(
+        `${activeUnit.name} heals ${targetUnit.name} for ${actualHeal} HP!`
+      );
+      activeUnit.isDefending = false;
+      break;
+    }
   }
 
   // Check for game over

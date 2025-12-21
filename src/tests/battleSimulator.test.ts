@@ -19,7 +19,10 @@ describe('Battle Simulator', () => {
     const skeleton = createSkeleton();
     const battle = createBattle(hero, skeleton);
 
-    const newBattle = executeBattleAction(battle, 'attack');
+    const newBattle = executeBattleAction(battle, {
+      skill: 'attack',
+      targets: [skeleton.id],
+    });
 
     expect(newBattle.defender.health).toBeLessThan(skeleton.health);
     expect(newBattle.currentTurn).toBe('defender');
@@ -30,7 +33,10 @@ describe('Battle Simulator', () => {
     const skeleton = createSkeleton();
     const battle = createBattle(hero, skeleton);
 
-    const newBattle = executeBattleAction(battle, 'defend');
+    const newBattle = executeBattleAction(battle, {
+      skill: 'defend',
+      targets: [],
+    });
 
     expect(newBattle.attacker.isDefending).toBe(true);
   });
@@ -41,7 +47,10 @@ describe('Battle Simulator', () => {
     const battle = createBattle(hero, skeleton);
     const initialDefenderHealth = skeleton.health;
 
-    const newBattle = executeBattleAction(battle, 'skip');
+    const newBattle = executeBattleAction(battle, {
+      skill: 'skip',
+      targets: [],
+    });
 
     expect(newBattle.defender.health).toBe(initialDefenderHealth);
     expect(newBattle.currentTurn).toBe('defender');
@@ -55,7 +64,10 @@ describe('Battle Simulator', () => {
     // Reduce defender health to 0
     battle.defender.health = 10;
 
-    const newBattle = executeBattleAction(battle, 'attack');
+    const newBattle = executeBattleAction(battle, {
+      skill: 'attack',
+      targets: [skeleton.id],
+    });
 
     expect(newBattle.gameOver).toBe(true);
     expect(newBattle.winner).toBe('attacker');
@@ -70,7 +82,10 @@ describe('Battle Simulator', () => {
     battle.currentTurn = 'defender';
     battle.attacker.health = 10;
 
-    battle = executeBattleAction(battle, 'attack');
+    battle = executeBattleAction(battle, {
+      skill: 'attack',
+      targets: [hero.id],
+    });
 
     expect(battle.gameOver).toBe(true);
     expect(battle.winner).toBe('defender');
@@ -82,11 +97,17 @@ describe('Battle Simulator', () => {
     let battle = createBattle(hero, skeleton);
 
     battle.defender.health = 10;
-    battle = executeBattleAction(battle, 'attack');
+    battle = executeBattleAction(battle, {
+      skill: 'attack',
+      targets: [skeleton.id],
+    });
 
     expect(battle.gameOver).toBe(true);
 
-    const unchangedBattle = executeBattleAction(battle, 'attack');
+    const unchangedBattle = executeBattleAction(battle, {
+      skill: 'attack',
+      targets: [skeleton.id],
+    });
     expect(unchangedBattle).toEqual(battle);
   });
 });

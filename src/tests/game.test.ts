@@ -15,7 +15,17 @@ describe('Game Logic', () => {
 
   it('should allow hero to attack skeleton', () => {
     const game = createGame();
-    const newGame = executeAction(game, 'attack');
+    // Use custom AI strategy to make skeleton skip (avoid random heal)
+    const newGame = executeAction(
+      game,
+      {
+        skill: 'attack',
+        targets: [game.skeleton.id],
+      },
+      {
+        defenderStrategy: () => ({ skill: 'skip', targets: [] }),
+      }
+    );
 
     expect(newGame.skeleton.health).toBeLessThan(80);
     expect(newGame.log.length).toBeGreaterThan(1);
@@ -23,7 +33,10 @@ describe('Game Logic', () => {
 
   it('should allow hero to defend', () => {
     const game = createGame();
-    const newGame = executeAction(game, 'defend');
+    const newGame = executeAction(game, {
+      skill: 'defend',
+      targets: [],
+    });
 
     // Note: After hero defends, skeleton takes its turn automatically
     // Hero's defending status persists until they take damage or take another action
@@ -34,7 +47,10 @@ describe('Game Logic', () => {
   it('should allow hero to skip turn', () => {
     const game = createGame();
     const initialHealth = game.skeleton.health;
-    const newGame = executeAction(game, 'skip');
+    const newGame = executeAction(game, {
+      skill: 'skip',
+      targets: [],
+    });
 
     expect(newGame.skeleton.health).toBe(initialHealth);
   });
@@ -48,7 +64,10 @@ describe('Game Logic', () => {
     // Force skeleton turn and hope it attacks
     for (let i = 0; i < 10; i++) {
       if (game.gameOver) break;
-      game = executeAction(game, 'skip');
+      game = executeAction(game, {
+        skill: 'skip',
+        targets: [],
+      });
     }
 
     if (game.gameOver) {
@@ -63,7 +82,10 @@ describe('Game Logic', () => {
     game.skeleton.health = 10;
 
     // Hero attacks
-    game = executeAction(game, 'attack');
+    game = executeAction(game, {
+      skill: 'attack',
+      targets: [game.skeleton.id],
+    });
 
     if (game.gameOver) {
       expect(game.winner).toBe('hero');

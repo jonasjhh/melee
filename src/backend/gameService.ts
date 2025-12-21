@@ -1,4 +1,4 @@
-import { GameState, SkillType } from './types.js';
+import { GameState, ActionCommand } from './types.js';
 
 /**
  * Abstract interface for game service
@@ -18,7 +18,7 @@ export interface IGameService {
   /**
    * Performs an action in the game
    */
-  performAction(action: SkillType): Promise<GameState>;
+  performAction(command: ActionCommand): Promise<GameState>;
 }
 
 /**

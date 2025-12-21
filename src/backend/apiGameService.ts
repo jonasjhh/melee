@@ -1,5 +1,5 @@
 import { IGameService, GameServiceError } from './gameService.js';
-import { GameState, SkillType } from './types.js';
+import { GameState, ActionCommand } from './types.js';
 
 /**
  * API-based implementation of game service
@@ -43,14 +43,14 @@ export class ApiGameService implements IGameService {
     }
   }
 
-  async performAction(action: SkillType): Promise<GameState> {
+  async performAction(command: ActionCommand): Promise<GameState> {
     try {
       const response = await fetch(`${this.apiUrl}/api/game/action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify(command),
       });
 
       if (!response.ok) {

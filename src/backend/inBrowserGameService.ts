@@ -1,6 +1,8 @@
 import { IGameService, GameServiceError } from './gameService.js';
-import { GameState, SkillType } from './types.js';
+import { GameState, ActionCommand } from './types.js';
 import { createGame, executeAction } from './gameOrchestrator.js';
+import { SKILLS } from './skills.js';
+import { validateTargets } from './targetingSystem.js';
 
 /**
  * In-browser implementation of game service
@@ -30,13 +32,29 @@ export class InBrowserGameService implements IGameService {
     }
   }
 
-  async performAction(action: SkillType): Promise<GameState> {
+  async performAction(command: ActionCommand): Promise<GameState> {
     try {
-      if (!['skip', 'attack', 'defend'].includes(action)) {
-        throw new GameServiceError('Invalid action', 'INVALID_ACTION');
+      const skill = SKILLS[command.skill];
+      if (!skill) {
+        throw new GameServiceError('Invalid skill', 'INVALID_SKILL');
       }
 
-      this.gameState = executeAction(this.gameState, action);
+      // Validate targets
+      const validation = validateTargets(
+        skill,
+        command.targets,
+        this.gameState,
+        this.gameState.currentTurn
+      );
+
+      if (!validation.valid) {
+        throw new GameServiceError(
+          validation.error || 'Invalid targets',
+          'INVALID_TARGETS'
+        );
+      }
+
+      this.gameState = executeAction(this.gameState, command);
       return Promise.resolve({ ...this.gameState });
     } catch (error) {
       if (error instanceof GameServiceError) {
