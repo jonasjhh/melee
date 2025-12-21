@@ -34,6 +34,12 @@ export default [
     },
   },
   {
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
     ignores: ['dist/', 'coverage/', 'node_modules/', '.stryker-tmp/', 'reports/'],
   },
 ];

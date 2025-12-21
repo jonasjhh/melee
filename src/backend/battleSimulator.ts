@@ -69,7 +69,7 @@ export function executeBattleAction(
       activeUnit.isDefending = false;
       break;
 
-    case 'attack':
+    case 'attack': {
       let damage = fullConfig.attackDamage;
       if (targetUnit.isDefending) {
         damage = Math.floor(damage * fullConfig.defendDamageReduction);
@@ -85,6 +85,7 @@ export function executeBattleAction(
       targetUnit.health = Math.max(0, targetUnit.health - damage);
       activeUnit.isDefending = false;
       break;
+    }
 
     case 'defend':
       activeUnit.isDefending = true;

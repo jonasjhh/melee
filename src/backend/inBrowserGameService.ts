@@ -22,6 +22,7 @@ export class InBrowserGameService implements IGameService {
       this.gameState = createGame();
       return Promise.resolve({ ...this.gameState });
     } catch (error) {
+      console.error('Failed to create new game:', error);
       throw new GameServiceError(
         'Failed to create new game',
         'NEW_GAME_FAILED'
@@ -41,6 +42,7 @@ export class InBrowserGameService implements IGameService {
       if (error instanceof GameServiceError) {
         throw error;
       }
+      console.error('Failed to perform action:', error);
       throw new GameServiceError(
         'Failed to perform action',
         'ACTION_FAILED'

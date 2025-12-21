@@ -17,6 +17,7 @@ export class ApiGameService implements IGameService {
       }
       return await response.json();
     } catch (error) {
+      console.error('Failed to get game state:', error);
       throw new GameServiceError(
         'Failed to get game state from server',
         'GET_STATE_FAILED'
@@ -34,6 +35,7 @@ export class ApiGameService implements IGameService {
       }
       return await response.json();
     } catch (error) {
+      console.error('Failed to create new game:', error);
       throw new GameServiceError(
         'Failed to create new game on server',
         'NEW_GAME_FAILED'
@@ -56,6 +58,7 @@ export class ApiGameService implements IGameService {
       }
       return await response.json();
     } catch (error) {
+      console.error('Failed to perform action:', error);
       throw new GameServiceError(
         'Failed to perform action on server',
         'ACTION_FAILED'
