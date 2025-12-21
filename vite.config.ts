@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/melee/',
   root: '.',
   build: {
     outDir: 'dist/frontend',
