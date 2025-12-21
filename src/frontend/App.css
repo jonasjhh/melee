@@ -1,0 +1,237 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 2.5rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.battlefield {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin-bottom: 40px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 15px;
+}
+
+.unit {
+  text-align: center;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  min-width: 250px;
+}
+
+.hero {
+  border: 3px solid #4caf50;
+}
+
+.skeleton {
+  border: 3px solid #f44336;
+}
+
+.unit h2 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.health-bar {
+  width: 100%;
+  height: 30px;
+  background: #e0e0e0;
+  border-radius: 15px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 2px solid #333;
+}
+
+.health-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+  transition: width 0.3s ease;
+}
+
+.skeleton-health {
+  background: linear-gradient(90deg, #f44336 0%, #e91e63 100%);
+}
+
+.health-text {
+  font-weight: bold;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.status {
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.defending {
+  background: #2196f3;
+  color: white;
+}
+
+.vs {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #ff5722;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.skills {
+  margin-bottom: 30px;
+}
+
+.skills h3 {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.skill-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.skill-button {
+  padding: 15px 30px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.skill-button:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.skill-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.skill-button.attack {
+  background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+  color: white;
+}
+
+.skill-button.defend {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.skill-button.skip {
+  background: linear-gradient(135deg, #a8a8a8 0%, #7a7a7a 100%);
+  color: white;
+}
+
+.game-log {
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.game-log h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.log-content {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  padding: 15px;
+  border-radius: 5px;
+  border: 1px solid #ddd;
+}
+
+.log-entry {
+  padding: 5px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.game-over {
+  text-align: center;
+  padding: 30px;
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  border-radius: 15px;
+  margin-bottom: 20px;
+}
+
+.game-over h2 {
+  color: white;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.new-game-button,
+.reset-button {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.new-game-button:hover,
+.reset-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.reset-button {
+  display: block;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
