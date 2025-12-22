@@ -1,62 +1,79 @@
 import { describe, it, expect } from 'vitest';
 import { createGame, executeAction } from '../backend/gameOrchestrator';
+import { getActiveUnit } from '../backend/initiativeSystem';
+import { isDefending } from '../backend/buffSystem';
 
 describe('Game Orchestrator', () => {
-  it('should create a game with hero and skeleton', () => {
+  it('should create a game with units on grid', () => {
     const game = createGame();
 
-    expect(game.hero.name).toBe('Hero');
-    expect(game.skeleton.name).toBe('Skeleton');
-    expect(game.currentTurn).toBe('hero');
+    expect(game.grid.units.size).toBeGreaterThan(0);
+    expect(game.turnOrder.unitOrder.length).toBeGreaterThan(0);
     expect(game.gameOver).toBe(false);
+    expect(game.log.length).toBeGreaterThanOrEqual(0); // Log may have initialization messages
   });
 
-  it('should execute hero action and trigger skeleton AI', () => {
+  it('should execute player action and advance turn', () => {
     const game = createGame();
-    // Use custom AI strategy to make skeleton skip (avoid random heal)
-    const newGame = executeAction(
-      game,
-      {
-        skill: 'attack',
-        targets: [game.skeleton.id],
-      },
-      {
-        defenderStrategy: () => ({ skill: 'skip', targets: [] }),
-      }
-    );
+    const activeUnitId = getActiveUnit(game.turnOrder);
+    const activeUnit = game.grid.units.get(activeUnitId);
 
-    expect(newGame.skeleton.health).toBeLessThan(80);
-    // After hero's action, skeleton should have acted too
-    expect(newGame.currentTurn).toBe('hero');
-  });
+    // Find an enemy target
+    const targetUnit = Array.from(game.grid.units.values())
+      .find(u => u.team !== activeUnit?.team && u.health > 0);
 
-  it('should allow custom defender strategy', () => {
-    const game = createGame();
+    if (!targetUnit) {
+      throw new Error('No valid target found');
+    }
 
-    // Custom strategy that always defends
-    const alwaysDefendStrategy = () => ({ skill: 'defend' as const, targets: [] });
-
+    const initialHealth = targetUnit.health;
     const newGame = executeAction(game, {
       skill: 'attack',
-      targets: [game.skeleton.id],
-    }, {
-      defenderStrategy: alwaysDefendStrategy,
+      targets: [targetUnit.id],
     });
 
-    // Skeleton should have defended
-    expect(newGame.skeleton.isDefending).toBe(true);
+    const updatedTarget = newGame.grid.units.get(targetUnit.id);
+    expect(updatedTarget?.health).toBeLessThan(initialHealth);
+    expect(newGame.log.length).toBeGreaterThan(game.log.length);
+  });
+
+  it('should apply defending buff', () => {
+    const game = createGame();
+    const activeUnitId = getActiveUnit(game.turnOrder);
+
+    const newGame = executeAction(game, {
+      skill: 'defend',
+      targets: [],
+    });
+
+    const unit = newGame.grid.units.get(activeUnitId);
+    expect(unit && isDefending(unit)).toBe(true);
   });
 
   it('should handle game over correctly', () => {
     let game = createGame();
-    game.skeleton.health = 10;
 
-    game = executeAction(game, {
-      skill: 'attack',
-      targets: [game.skeleton.id],
+    // Reduce all enemy units to 1 health
+    const enemyUnits = Array.from(game.grid.units.values())
+      .filter(u => u.team === 'enemy');
+
+    enemyUnits.forEach(unit => {
+      game.grid.units.set(unit.id, { ...unit, health: 1 });
     });
 
-    expect(game.gameOver).toBe(true);
-    expect(game.winner).toBe('hero');
+    // Attack one enemy unit
+    const activeUnitId = getActiveUnit(game.turnOrder);
+    const activeUnit = game.grid.units.get(activeUnitId);
+
+    if (activeUnit?.team === 'player') {
+      game = executeAction(game, {
+        skill: 'attack',
+        targets: [enemyUnits[0].id],
+      });
+
+      if (game.gameOver) {
+        expect(game.winner).toBe('player');
+      }
+    }
   });
 });

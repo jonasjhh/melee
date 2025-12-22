@@ -1,4 +1,5 @@
 import { GameState, Skill, TargetRequirement, Unit } from './types.js';
+import { getAllUnits } from './gridSystem.js';
 
 export interface ValidationResult {
   valid: boolean;
@@ -13,21 +14,25 @@ export function getValidTargets(
   activeUnitId: string,
   requirement: TargetRequirement
 ): Unit[] {
-  const allUnits = [state.hero, state.skeleton];
+  const activeUnit = state.grid.units.get(activeUnitId);
+  if (!activeUnit) return [];
+
+  const allUnits = getAllUnits(state.grid).filter(u => u.health > 0);
 
   switch (requirement.type) {
     case 'enemy':
-      // Enemies are units that are not the active unit and are alive
-      return allUnits.filter((u) => u.id !== activeUnitId && u.health > 0);
+    case 'enemy-any':
+      // Enemies are units on the opposing team
+      return allUnits.filter(u => u.team !== activeUnit.team);
 
     case 'ally':
-      // Currently with only 2 units (hero vs skeleton), ally means self
-      // This is set up for future party members where ally would include other team members
-      return allUnits.filter((u) => u.id === activeUnitId && u.health > 0);
+    case 'ally-any':
+      // Allies are units on the same team
+      return allUnits.filter(u => u.team === activeUnit.team);
 
     case 'self':
       // Self targeting - only the active unit
-      return allUnits.filter((u) => u.id === activeUnitId);
+      return allUnits.filter(u => u.id === activeUnitId);
 
     case 'none':
       // No targeting needed

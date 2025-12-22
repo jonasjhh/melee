@@ -1,6 +1,6 @@
 import { IGameService, GameServiceError } from './gameService.js';
-import { GameState, ActionCommand } from './types.js';
-import { createGame, executeAction } from './gameOrchestrator.js';
+import { GameState, ActionCommand, CharacterModel } from './types.js';
+import { createGame, executeAction, createGameWithModels } from './gameOrchestrator.js';
 import { SKILLS } from './skills.js';
 import { validateTargets } from './targetingSystem.js';
 
@@ -10,9 +10,19 @@ import { validateTargets } from './targetingSystem.js';
  */
 export class InBrowserGameService implements IGameService {
   private gameState: GameState;
+  private playerModels: CharacterModel[] | null = null;
+  private enemyModels: CharacterModel[] | null = null;
 
   constructor() {
     this.gameState = createGame();
+  }
+
+  /**
+   * Set the parties to use for the next game
+   */
+  setParties(playerModels: CharacterModel[], enemyModels: CharacterModel[]): void {
+    this.playerModels = playerModels;
+    this.enemyModels = enemyModels;
   }
 
   async getState(): Promise<GameState> {
@@ -21,7 +31,11 @@ export class InBrowserGameService implements IGameService {
 
   async newGame(): Promise<GameState> {
     try {
-      this.gameState = createGame();
+      if (this.playerModels && this.enemyModels) {
+        this.gameState = createGameWithModels(this.playerModels, this.enemyModels);
+      } else {
+        this.gameState = createGame();
+      }
       return Promise.resolve({ ...this.gameState });
     } catch (error) {
       console.error('Failed to create new game:', error);
@@ -39,12 +53,15 @@ export class InBrowserGameService implements IGameService {
         throw new GameServiceError('Invalid skill', 'INVALID_SKILL');
       }
 
+      // Get active unit ID from turn order
+      const activeUnitId = this.gameState.turnOrder.unitOrder[this.gameState.turnOrder.currentUnitIndex];
+
       // Validate targets
       const validation = validateTargets(
         skill,
         command.targets,
         this.gameState,
-        this.gameState.currentTurn
+        activeUnitId
       );
 
       if (!validation.valid) {

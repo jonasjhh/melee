@@ -1,116 +1,122 @@
-import { Unit, ActionCommand } from './types.js';
-import { createHero, createSkeleton } from './unit.js';
+import { GameState, ActionCommand, CharacterModel, Party } from './types.js';
+import { createEmptyGrid, placeUnit } from './gridSystem.js';
+import { createTurnOrder, getActiveUnit, isPlayerControlled } from './initiativeSystem.js';
+import { executeBattleAction } from './battleSimulator.js';
 import { getSkeletonAction } from './ai.js';
-import {
-  BattleState,
-  createBattle,
-  executeBattleAction,
-  BattleConfig,
-} from './battleSimulator.js';
-
-/**
- * Game-specific state that wraps the battle simulator
- * This layer knows about "hero" and "skeleton" specifically
- */
-export interface GameState {
-  hero: Unit;
-  skeleton: Unit;
-  currentTurn: 'hero' | 'skeleton';
-  gameOver: boolean;
-  winner?: 'hero' | 'skeleton';
-  log: string[];
-}
+import { CHARACTER_TEMPLATES } from './characterModel.js';
+import { createParty, createUnitsFromParty } from './partyComposer.js';
 
 /**
  * Strategy for getting the next action for a unit
  */
-export type ActionStrategy = (state: GameState) => ActionCommand;
+export type ActionStrategy = (state: GameState, unitId: string) => ActionCommand;
 
 /**
  * Configuration for the game orchestrator
  */
 export interface GameOrchestratorConfig {
-  battleConfig?: Partial<BattleConfig>;
   defenderStrategy?: ActionStrategy;
+  playerParty?: Party;
+  enemyParty?: Party;
 }
 
 /**
- * Converts battle state to game state
+ * Create default player party (2 heroes)
  */
-function battleStateToGameState(battleState: BattleState): GameState {
-  return {
-    hero: battleState.attacker,
-    skeleton: battleState.defender,
-    currentTurn: battleState.currentTurn === 'attacker' ? 'hero' : 'skeleton',
-    gameOver: battleState.gameOver,
-    winner: battleState.winner
-      ? battleState.winner === 'attacker'
-        ? 'hero'
-        : 'skeleton'
-      : undefined,
-    log: battleState.log,
-  };
+function createDefaultPlayerParty(): Party {
+  return createParty('player-party', 'Heroes', [
+    CHARACTER_TEMPLATES.WARRIOR,
+    CHARACTER_TEMPLATES.CLERIC,
+  ]);
 }
 
 /**
- * Converts game state to battle state
+ * Create default enemy party (2 skeletons)
  */
-function gameStateToBattleState(gameState: GameState): BattleState {
-  return {
-    attacker: gameState.hero,
-    defender: gameState.skeleton,
-    currentTurn: gameState.currentTurn === 'hero' ? 'attacker' : 'defender',
-    gameOver: gameState.gameOver,
-    winner: gameState.winner
-      ? gameState.winner === 'hero'
-        ? 'attacker'
-        : 'defender'
-      : undefined,
-    log: gameState.log,
-  };
+function createDefaultEnemyParty(): Party {
+  return createParty('enemy-party', 'Enemies', [
+    CHARACTER_TEMPLATES.SKELETON,
+    CHARACTER_TEMPLATES.SKELETON,
+  ]);
 }
 
 /**
- * Creates a new game with hero vs skeleton
+ * Creates a new game with customizable parties on a 4x4 grid
  */
 export function createGame(config: GameOrchestratorConfig = {}): GameState {
-  const hero = createHero();
-  const skeleton = createSkeleton();
-  const battleState = createBattle(hero, skeleton, config.battleConfig);
-  return battleStateToGameState(battleState);
+  const playerParty = config.playerParty || createDefaultPlayerParty();
+  const enemyParty = config.enemyParty || createDefaultEnemyParty();
+
+  let grid = createEmptyGrid();
+
+  // Create units from parties
+  // Player team starts at row 0, enemy team starts at row 2
+  const playerUnits = createUnitsFromParty(playerParty, 'player', 0);
+  const enemyUnits = createUnitsFromParty(enemyParty, 'enemy', 2);
+
+  // Place all units on grid
+  playerUnits.forEach(unit => {
+    grid = placeUnit(grid, unit, unit.position);
+  });
+
+  enemyUnits.forEach(unit => {
+    grid = placeUnit(grid, unit, unit.position);
+  });
+
+  const turnOrder = createTurnOrder(grid);
+  const playerControlledUnits = new Set(playerUnits.map(u => u.id));
+
+  return {
+    grid,
+    turnOrder,
+    playerControlledUnits,
+    gameOver: false,
+    log: [
+      `Battle begins! ${playerParty.name} (${playerUnits.length}) vs ${enemyParty.name} (${enemyUnits.length})!`
+    ],
+  };
+}
+
+/**
+ * Create a game with specific character models
+ */
+export function createGameWithModels(
+  playerModels: CharacterModel[],
+  enemyModels: CharacterModel[]
+): GameState {
+  const playerParty = createParty('player-party', 'Player Team', playerModels);
+  const enemyParty = createParty('enemy-party', 'Enemy Team', enemyModels);
+
+  return createGame({ playerParty, enemyParty });
 }
 
 /**
  * Executes an action in the game
- * Automatically handles AI turns for the defender
+ * Automatically handles AI turns until the next player-controlled unit
  */
 export function executeAction(
   state: GameState,
   command: ActionCommand,
   config: GameOrchestratorConfig = {}
 ): GameState {
-  if (state.gameOver) {
-    return state;
+  const { defenderStrategy = getSkeletonAction } = config;
+
+  // Execute player command
+  let newState = executeBattleAction(state, command);
+
+  // AI loop: keep executing AI turns until next player-controlled unit
+  while (!newState.gameOver) {
+    const activeUnitId = getActiveUnit(newState.turnOrder);
+
+    if (isPlayerControlled(activeUnitId, newState.playerControlledUnits)) {
+      // Next turn is player-controlled, stop
+      break;
+    }
+
+    // AI turn
+    const aiCommand = defenderStrategy(newState, activeUnitId);
+    newState = executeBattleAction(newState, aiCommand);
   }
 
-  // Default defender strategy is the skeleton AI
-  const defenderStrategy =
-    config.defenderStrategy || getSkeletonAction;
-
-  // Convert to battle state and execute action
-  let battleState = gameStateToBattleState(state);
-  battleState = executeBattleAction(battleState, command, config.battleConfig);
-
-  // If it's now defender's turn and game is not over, execute AI action
-  if (battleState.currentTurn === 'defender' && !battleState.gameOver) {
-    const gameState = battleStateToGameState(battleState);
-    const defenderCommand = defenderStrategy(gameState);
-    battleState = executeBattleAction(
-      battleState,
-      defenderCommand,
-      config.battleConfig
-    );
-  }
-
-  return battleStateToGameState(battleState);
+  return newState;
 }

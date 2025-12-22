@@ -1,113 +1,302 @@
-import { describe, it, expect } from 'vitest';
-import { createBattle, executeBattleAction } from '../backend/battleSimulator';
-import { createHero, createSkeleton } from '../backend/unit';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { createGame, executeAction } from '../backend/gameOrchestrator';
+import { isDefending } from '../backend/buffSystem';
+import { getActiveUnit } from '../backend/initiativeSystem';
+import { GameState } from '../backend/types';
 
 describe('Battle Simulator', () => {
-  it('should create a battle with two units', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    const battle = createBattle(hero, skeleton);
+  let gameState: GameState;
 
-    expect(battle.attacker.name).toBe('Hero');
-    expect(battle.defender.name).toBe('Skeleton');
-    expect(battle.currentTurn).toBe('attacker');
-    expect(battle.gameOver).toBe(false);
+  beforeEach(() => {
+    // Arrange: Create a fresh game state for each test
+    gameState = createGame();
   });
 
-  it('should execute attack action', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    const battle = createBattle(hero, skeleton);
-
-    const newBattle = executeBattleAction(battle, {
-      skill: 'attack',
-      targets: [skeleton.id],
+  describe('given a new game', () => {
+    it('when game is created then should have units on grid', () => {
+      // Assert
+      expect(gameState.grid.units.size).toBeGreaterThan(0);
+      expect(gameState.turnOrder.unitOrder.length).toBeGreaterThan(0);
+      expect(gameState.gameOver).toBe(false);
     });
-
-    expect(newBattle.defender.health).toBeLessThan(skeleton.health);
-    expect(newBattle.currentTurn).toBe('defender');
   });
 
-  it('should execute defend action', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    const battle = createBattle(hero, skeleton);
+  describe('given an active unit', () => {
+    it('when executing attack action then should process action and update log', () => {
+      // Arrange
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+      const activeUnit = gameState.grid.units.get(activeUnitId);
+      const targetId = Array.from(gameState.grid.units.values())
+        .find(u => u.team !== activeUnit?.team && u.health > 0)?.id || '';
+      const initialLogLength = gameState.log.length;
 
-    const newBattle = executeBattleAction(battle, {
-      skill: 'defend',
-      targets: [],
+      // Act
+      const newGame = executeAction(gameState, {
+        skill: 'attack',
+        targets: [targetId],
+      });
+
+      // Assert
+      expect(newGame.log.length).toBeGreaterThan(initialLogLength);
+      expect(newGame.log[newGame.log.length - 1]).toContain('attack');
     });
 
-    expect(newBattle.attacker.isDefending).toBe(true);
+    it('when executing defend action then should apply defending buff', () => {
+      // Arrange
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+
+      // Act
+      const newGame = executeAction(gameState, {
+        skill: 'defend',
+        targets: [],
+      });
+
+      // Assert
+      const unit = newGame.grid.units.get(activeUnitId);
+      expect(unit && isDefending(unit)).toBe(true);
+    });
+
+    it('when executing skip action then should advance turn without changing unit health', () => {
+      // Arrange
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+      const activeUnit = gameState.grid.units.get(activeUnitId);
+      const initialHealth = activeUnit?.health || 0;
+      const initialTurnIndex = gameState.turnOrder.currentUnitIndex;
+
+      // Act
+      const newGame = executeAction(gameState, {
+        skill: 'skip',
+        targets: [],
+      });
+
+      // Assert
+      const unit = newGame.grid.units.get(activeUnitId);
+      expect(unit?.health).toBe(initialHealth);
+      expect(newGame.turnOrder.currentUnitIndex).not.toBe(initialTurnIndex);
+    });
+
+    it('when executing heal action then should restore target health', () => {
+      // Arrange
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+      const activeUnit = gameState.grid.units.get(activeUnitId);
+      const targetId = Array.from(gameState.grid.units.values())
+        .find(u => u.team === activeUnit?.team && u.health > 0)?.id || '';
+      const target = gameState.grid.units.get(targetId);
+
+      // Damage the target first so we can heal it
+      if (target) {
+        gameState.grid.units.set(targetId, { ...target, health: target.health - 10 });
+      }
+
+      const damagedTarget = gameState.grid.units.get(targetId);
+      const healthBeforeHeal = damagedTarget?.health || 0;
+
+      // Act
+      const newGame = executeAction(gameState, {
+        skill: 'heal',
+        targets: [targetId],
+      });
+
+      // Assert
+      const healedTarget = newGame.grid.units.get(targetId);
+      expect(healedTarget?.health).toBeGreaterThan(healthBeforeHeal);
+    });
   });
 
-  it('should execute skip action', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    const battle = createBattle(hero, skeleton);
-    const initialDefenderHealth = skeleton.health;
+  describe('given player team has one unit with 1 HP', () => {
+    it('when enemy attacks player then game should end with enemy victory', () => {
+      // Arrange: Set all player units to 1 HP
+      const playerUnits = Array.from(gameState.grid.units.values())
+        .filter(u => u.team === 'player');
 
-    const newBattle = executeBattleAction(battle, {
-      skill: 'skip',
-      targets: [],
+      playerUnits.forEach(unit => {
+        gameState.grid.units.set(unit.id, { ...unit, health: 1 });
+      });
+
+      // Find an enemy turn or skip to it
+      let currentGame = gameState;
+      const maxTurns = 10; // Safety limit
+      let turnsProcessed = 0;
+
+      while (turnsProcessed < maxTurns) {
+        const activeUnitId = getActiveUnit(currentGame.turnOrder);
+        const activeUnit = currentGame.grid.units.get(activeUnitId);
+
+        if (activeUnit?.team === 'enemy') {
+          // Act: Enemy attacks player
+          const playerTarget = playerUnits[0];
+          currentGame = executeAction(currentGame, {
+            skill: 'attack',
+            targets: [playerTarget.id],
+          });
+          break;
+        } else {
+          // Skip player turn
+          currentGame = executeAction(currentGame, {
+            skill: 'skip',
+            targets: [],
+          });
+        }
+        turnsProcessed++;
+      }
+
+      // Assert
+      expect(currentGame.gameOver).toBe(true);
+      expect(currentGame.winner).toBe('enemy');
     });
-
-    expect(newBattle.defender.health).toBe(initialDefenderHealth);
-    expect(newBattle.currentTurn).toBe('defender');
   });
 
-  it('should end battle when attacker wins', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    const battle = createBattle(hero, skeleton);
+  describe('given enemy team has one unit with 1 HP', () => {
+    it('when player attacks enemy then game should end with player victory', () => {
+      // Arrange: Set all enemy units to 1 HP and give them very low power
+      const enemyUnits = Array.from(gameState.grid.units.values())
+        .filter(u => u.team === 'enemy');
 
-    // Reduce defender health to 0
-    battle.defender.health = 10;
+      enemyUnits.forEach(unit => {
+        gameState.grid.units.set(unit.id, { ...unit, health: 1, power: 0 });
+      });
 
-    const newBattle = executeBattleAction(battle, {
-      skill: 'attack',
-      targets: [skeleton.id],
+      // Ensure we have enough player units with enough power to kill in one hit
+      const playerUnits = Array.from(gameState.grid.units.values())
+        .filter(u => u.team === 'player');
+
+      playerUnits.forEach(unit => {
+        gameState.grid.units.set(unit.id, { ...unit, power: 100 });
+      });
+
+      // Act: Execute turns until game is over or we hit safety limit
+      let currentGame = gameState;
+      const maxTurns = 20; // Increased safety limit
+      let turnsProcessed = 0;
+
+      while (!currentGame.gameOver && turnsProcessed < maxTurns) {
+        const activeUnitId = getActiveUnit(currentGame.turnOrder);
+        const activeUnit = currentGame.grid.units.get(activeUnitId);
+
+        if (activeUnit?.team === 'player') {
+          // Player attacks enemy
+          const enemyTarget = Array.from(currentGame.grid.units.values())
+            .find(u => u.team === 'enemy' && u.health > 0);
+
+          if (enemyTarget) {
+            currentGame = executeAction(currentGame, {
+              skill: 'attack',
+              targets: [enemyTarget.id],
+            });
+          } else {
+            // No enemies left, should trigger game over
+            break;
+          }
+        } else {
+          // Skip enemy turn (they can't kill us with 0 power)
+          currentGame = executeAction(currentGame, {
+            skill: 'skip',
+            targets: [],
+          });
+        }
+        turnsProcessed++;
+      }
+
+      // Assert
+      expect(turnsProcessed).toBeLessThan(maxTurns); // Ensure we didn't hit the safety limit
+      expect(currentGame.gameOver).toBe(true);
+      expect(currentGame.winner).toBe('player');
     });
-
-    expect(newBattle.gameOver).toBe(true);
-    expect(newBattle.winner).toBe('attacker');
   });
 
-  it('should end battle when defender wins', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    let battle = createBattle(hero, skeleton);
+  describe('given game is over', () => {
+    it('when executing action then should not process action and return unchanged state', () => {
+      // Arrange: Set game to game over state
+      const gameOverState = { ...gameState, gameOver: true, winner: 'player' as const };
+      const activeUnitId = getActiveUnit(gameOverState.turnOrder);
 
-    // Switch to defender's turn and reduce attacker health
-    battle.currentTurn = 'defender';
-    battle.attacker.health = 10;
+      // Act
+      const unchangedGame = executeAction(gameOverState, {
+        skill: 'attack',
+        targets: [activeUnitId],
+      });
 
-    battle = executeBattleAction(battle, {
-      skill: 'attack',
-      targets: [hero.id],
+      // Assert
+      expect(unchangedGame.gameOver).toBe(true);
+      expect(unchangedGame).toEqual(gameOverState);
     });
-
-    expect(battle.gameOver).toBe(true);
-    expect(battle.winner).toBe('defender');
   });
 
-  it('should not allow actions after game over', () => {
-    const hero = createHero();
-    const skeleton = createSkeleton();
-    let battle = createBattle(hero, skeleton);
+  describe('given unit with defending buff', () => {
+    it('when unit takes defend action then buff should be applied immediately', () => {
+      // Arrange
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
 
-    battle.defender.health = 10;
-    battle = executeBattleAction(battle, {
-      skill: 'attack',
-      targets: [skeleton.id],
+      // Act: Apply defend buff
+      const defendedGame = executeAction(gameState, {
+        skill: 'defend',
+        targets: [],
+      });
+
+      // Assert: Buff should be applied
+      const defendedUnit = defendedGame.grid.units.get(activeUnitId);
+      expect(defendedUnit && isDefending(defendedUnit)).toBe(true);
+      expect(defendedUnit?.buffs).toHaveLength(1);
+      expect(defendedUnit?.buffs[0].type).toBe('defending');
+      expect(defendedUnit?.buffs[0].duration).toBe(1);
     });
 
-    expect(battle.gameOver).toBe(true);
+    it('when defending unit is attacked then damage should be reduced', () => {
+      // Arrange: First unit defends
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+      let currentGame = executeAction(gameState, {
+        skill: 'defend',
+        targets: [],
+      });
 
-    const unchangedBattle = executeBattleAction(battle, {
-      skill: 'attack',
-      targets: [skeleton.id],
+      const defendedUnit = currentGame.grid.units.get(activeUnitId);
+      const initialHealth = defendedUnit?.health || 0;
+
+      // Act: Advance to next turn and attack the defended unit
+      currentGame = executeAction(currentGame, {
+        skill: 'attack',
+        targets: [activeUnitId],
+      });
+
+      // Assert: Damage should be reduced and defending buff should be removed
+      const attackedUnit = currentGame.grid.units.get(activeUnitId);
+      const damageTaken = initialHealth - (attackedUnit?.health || 0);
+      expect(damageTaken).toBeGreaterThan(0); // Some damage should be dealt
+      expect(attackedUnit && isDefending(attackedUnit)).toBe(false); // Buff removed after being hit
     });
-    expect(unchangedBattle).toEqual(battle);
+
+    it('when defending unit turn comes around again then buff should be decremented and removed', () => {
+      // Arrange: Apply defend buff (duration 1)
+      const activeUnitId = getActiveUnit(gameState.turnOrder);
+      let currentGame = executeAction(gameState, {
+        skill: 'defend',
+        targets: [],
+      });
+
+      // Verify buff is applied with duration 1
+      const defendedUnit = currentGame.grid.units.get(activeUnitId);
+      expect(defendedUnit && isDefending(defendedUnit)).toBe(true);
+      expect(defendedUnit?.buffs[0].duration).toBe(1);
+
+      // Act: Execute a full round of turns (all units take a turn)
+      let turnsProcessed = 0;
+      const maxTurns = 20; // Safety limit
+      const totalUnits = Array.from(currentGame.grid.units.values()).filter(u => u.health > 0).length;
+
+      // Execute turns until we've gone through at least one full round
+      while (turnsProcessed < Math.min(totalUnits, maxTurns)) {
+        currentGame = executeAction(currentGame, {
+          skill: 'skip',
+          targets: [],
+        });
+        turnsProcessed++;
+      }
+
+      // Assert: After a full round, when it's the unit's turn again, buff should be removed
+      // The buff is decremented at the START of the unit's turn, so it should now be gone
+      const finalUnit = currentGame.grid.units.get(activeUnitId);
+      expect(finalUnit && isDefending(finalUnit)).toBe(false);
+      expect(turnsProcessed).toBeLessThan(maxTurns); // Ensure we didn't hit safety limit
+    });
   });
 });

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createHero, createSkeleton } from '../backend/unit';
+import { isDefending } from '../backend/buffSystem';
 
 describe('Unit Creation', () => {
   it('should create a hero with correct properties', () => {
@@ -9,8 +10,8 @@ describe('Unit Creation', () => {
     expect(hero.name).toBe('Hero');
     expect(hero.health).toBe(100);
     expect(hero.maxHealth).toBe(100);
-    expect(hero.isDefending).toBe(false);
-    expect(hero.skills).toHaveLength(6);
+    expect(isDefending(hero)).toBe(false);
+    expect(hero.skills).toHaveLength(4); // DEFAULT_SKILLS has 4 skills
   });
 
   it('should create a skeleton with correct properties', () => {
@@ -20,8 +21,8 @@ describe('Unit Creation', () => {
     expect(skeleton.name).toBe('Skeleton');
     expect(skeleton.health).toBe(80);
     expect(skeleton.maxHealth).toBe(80);
-    expect(skeleton.isDefending).toBe(false);
-    expect(skeleton.skills).toHaveLength(6);
+    expect(isDefending(skeleton)).toBe(false);
+    expect(skeleton.skills).toHaveLength(4); // DEFAULT_SKILLS has 4 skills
   });
 
   it('should have attack, defend, and skip skills', () => {

@@ -1,49 +1,19 @@
-import { Unit, ActionCommand } from './types.js';
-
-export interface BattleState {
-  attacker: Unit;
-  defender: Unit;
-  currentTurn: 'attacker' | 'defender';
-  gameOver: boolean;
-  winner?: 'attacker' | 'defender';
-  log: string[];
-}
+import { GameState, ActionCommand } from './types.js';
+import { getTeamUnits } from './gridSystem.js';
+import { getActiveUnit, advanceTurn } from './initiativeSystem.js';
+import { getEffectivePower, isDefending, applyBuff, removeBuff, applyRegenHealing, decrementBuffDurations } from './buffSystem.js';
 
 export interface BattleConfig {
   attackDamage: number;
   defendDamageReduction: number;
 }
 
-const DEFAULT_CONFIG: BattleConfig = {
-  attackDamage: 20,
-  defendDamageReduction: 0.5,
-};
-
 /**
- * Creates a new battle state with the given units
+ * Calculate damage based on power, defense, and defending status
  */
-export function createBattle(
-  attacker: Unit,
-  defender: Unit,
-  _config: Partial<BattleConfig> = {}
-): BattleState {
-
-  return {
-    attacker: { ...attacker },
-    defender: { ...defender },
-    currentTurn: 'attacker',
-    gameOver: false,
-    log: [`Battle started! ${attacker.name} vs ${defender.name}`],
-  };
-}
-
-/**
- * Helper function to get a unit by ID
- */
-function getUnitById(state: BattleState, id: string): Unit {
-  if (state.attacker.id === id) return state.attacker;
-  if (state.defender.id === id) return state.defender;
-  throw new Error(`Unit ${id} not found`);
+function calculateDamage(power: number, defense: number, hasDefendingBuff: boolean): number {
+  const baseDamage = Math.max(1, power - defense);
+  return hasDefendingBuff ? Math.ceil(baseDamage / 2) : baseDamage;
 }
 
 /**
@@ -51,101 +21,204 @@ function getUnitById(state: BattleState, id: string): Unit {
  * This is pure battle logic - no AI, no side effects
  */
 export function executeBattleAction(
-  state: BattleState,
+  state: GameState,
   command: ActionCommand,
-  config: Partial<BattleConfig> = {}
-): BattleState {
-  if (state.gameOver) {
-    return state;
+  _config: Partial<BattleConfig> = {}
+): GameState {
+  if (state.gameOver) return state;
+
+  const activeUnitId = getActiveUnit(state.turnOrder);
+  let activeUnit = state.grid.units.get(activeUnitId);
+  if (!activeUnit) return state;
+
+  const newState = { ...state, log: [...state.log] };
+
+  // Apply regen healing and decrement buff durations at START of turn
+  const { unit: regenHealedUnit, healingDone } = applyRegenHealing(activeUnit);
+  if (healingDone > 0) {
+    newState.log.push(`${regenHealedUnit.name} regenerates ${healingDone} HP.`);
   }
 
-  const fullConfig = { ...DEFAULT_CONFIG, ...config };
-  const newState = {
-    ...state,
-    attacker: { ...state.attacker },
-    defender: { ...state.defender },
-    log: [...state.log],
-  };
-
-  const activeUnit =
-    newState.currentTurn === 'attacker' ? newState.attacker : newState.defender;
+  // Decrement buff durations
+  activeUnit = decrementBuffDurations(regenHealedUnit);
+  newState.grid.units.set(activeUnitId, activeUnit);
 
   switch (command.skill) {
-    case 'skip':
-      newState.log.push(`${activeUnit.name} skipped their turn.`);
-      activeUnit.isDefending = false;
-      break;
-
     case 'attack': {
       const targetId = command.targets[0];
-      const targetUnit = getUnitById(newState, targetId);
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
 
-      let damage = fullConfig.attackDamage;
-      if (targetUnit.isDefending) {
-        damage = Math.floor(damage * fullConfig.defendDamageReduction);
+      const effectivePower = getEffectivePower(activeUnit);
+      const damage = calculateDamage(effectivePower, target.defense, isDefending(target));
+
+      // Remove defending buff after being hit
+      let updatedTarget = { ...target, health: Math.max(0, target.health - damage) };
+      if (isDefending(target)) {
+        updatedTarget = removeBuff(updatedTarget, 'defending');
+      }
+
+      newState.grid.units.set(targetId, updatedTarget);
+
+      if (isDefending(target)) {
         newState.log.push(
-          `${activeUnit.name} attacks! ${targetUnit.name} defends and takes ${damage} damage.`
+          `${activeUnit.name} attacks! ${updatedTarget.name} defends and takes ${damage} damage.`
         );
-        targetUnit.isDefending = false;
       } else {
         newState.log.push(
-          `${activeUnit.name} attacks ${targetUnit.name} for ${damage} damage!`
+          `${activeUnit.name} attacks ${updatedTarget.name} for ${damage} damage!`
         );
       }
-      targetUnit.health = Math.max(0, targetUnit.health - damage);
-      activeUnit.isDefending = false;
+
+      // Check death
+      if (updatedTarget.health === 0) {
+        newState.log.push(`${updatedTarget.name} has been defeated!`);
+      }
       break;
     }
 
-    case 'defend':
-      activeUnit.isDefending = true;
+    case 'defend': {
+      const buffedUnit = applyBuff(activeUnit, 'defending', 1, 0);
+      newState.grid.units.set(activeUnitId, buffedUnit);
       newState.log.push(`${activeUnit.name} takes a defensive stance.`);
       break;
+    }
 
     case 'heal': {
       const targetId = command.targets[0];
-      const targetUnit = getUnitById(newState, targetId);
-      const healAmount = 30;
-      const actualHeal = Math.min(healAmount, targetUnit.maxHealth - targetUnit.health);
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
 
-      targetUnit.health += actualHeal;
+      const healAmount = 30;
+      const actualHeal = Math.min(healAmount, target.maxHealth - target.health);
+
+      const healedTarget = { ...target, health: target.health + actualHeal };
+      newState.grid.units.set(targetId, healedTarget);
 
       newState.log.push(
-        `${activeUnit.name} heals ${targetUnit.name} for ${actualHeal} HP!`
+        `${activeUnit.name} heals ${target.name} for ${actualHeal} HP!`
       );
-      activeUnit.isDefending = false;
+      break;
+    }
+
+    case 'bolt': {
+      const targetId = command.targets[0];
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
+
+      const effectivePower = getEffectivePower(activeUnit);
+      const baseDamage = Math.max(1, effectivePower - target.defense);
+      const damage = Math.floor(baseDamage * 0.8); // 0.8x damage multiplier
+
+      // Remove defending buff after being hit
+      let updatedTarget = { ...target, health: Math.max(0, target.health - damage) };
+      if (isDefending(target)) {
+        updatedTarget = removeBuff(updatedTarget, 'defending');
+      }
+
+      newState.grid.units.set(targetId, updatedTarget);
+
+      newState.log.push(
+        `${activeUnit.name} casts Bolt at ${updatedTarget.name} for ${damage} damage!`
+      );
+
+      // Check death
+      if (updatedTarget.health === 0) {
+        newState.log.push(`${updatedTarget.name} has been defeated!`);
+      }
+      break;
+    }
+
+    case 'leech': {
+      const targetId = command.targets[0];
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
+
+      const effectivePower = getEffectivePower(activeUnit);
+      const baseDamage = Math.max(1, effectivePower - target.defense);
+      const damage = Math.floor(baseDamage * 0.7); // 0.7x damage multiplier
+
+      // Apply damage to target
+      let updatedTarget = { ...target, health: Math.max(0, target.health - damage) };
+      if (isDefending(target)) {
+        updatedTarget = removeBuff(updatedTarget, 'defending');
+      }
+      newState.grid.units.set(targetId, updatedTarget);
+
+      // Heal self for 50% of damage dealt
+      const healAmount = Math.floor(damage * 0.5);
+      const actualHeal = Math.min(healAmount, activeUnit.maxHealth - activeUnit.health);
+      const healedActiveUnit = { ...activeUnit, health: activeUnit.health + actualHeal };
+      newState.grid.units.set(activeUnitId, healedActiveUnit);
+
+      newState.log.push(
+        `${activeUnit.name} leeches ${updatedTarget.name} for ${damage} damage and heals ${actualHeal} HP!`
+      );
+
+      // Check death
+      if (updatedTarget.health === 0) {
+        newState.log.push(`${updatedTarget.name} has been defeated!`);
+      }
+      break;
+    }
+
+    case 'haste': {
+      const targetId = command.targets[0];
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
+
+      const buffedTarget = applyBuff(target, 'haste', 5, 10);
+      newState.grid.units.set(targetId, buffedTarget);
+      newState.log.push(`${activeUnit.name} casts Haste on ${target.name}!`);
+      break;
+    }
+
+    case 'bless': {
+      const targetId = command.targets[0];
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
+
+      const buffedTarget = applyBuff(target, 'bless', 5, 10);
+      newState.grid.units.set(targetId, buffedTarget);
+      newState.log.push(`${activeUnit.name} casts Bless on ${target.name}!`);
+      break;
+    }
+
+    case 'regen': {
+      const targetId = command.targets[0];
+      const target = newState.grid.units.get(targetId);
+      if (!target) break;
+
+      const buffedTarget = applyBuff(target, 'regen', 5, 5);
+      newState.grid.units.set(targetId, buffedTarget);
+      newState.log.push(`${activeUnit.name} casts Regen on ${target.name}!`);
+      break;
+    }
+
+    case 'skip': {
+      newState.log.push(`${activeUnit.name} skips their turn.`);
       break;
     }
   }
 
-  // Check for game over
-  if (newState.attacker.health <= 0) {
+  // Check win condition
+  const playerUnits = getTeamUnits(newState.grid, 'player').filter(u => u.health > 0);
+  const enemyUnits = getTeamUnits(newState.grid, 'enemy').filter(u => u.health > 0);
+
+  if (playerUnits.length === 0) {
     newState.gameOver = true;
-    newState.winner = 'defender';
-    newState.log.push(`Game Over! ${newState.defender.name} wins!`);
-  } else if (newState.defender.health <= 0) {
+    newState.winner = 'enemy';
+    newState.log.push('Game Over! Enemy team wins!');
+  } else if (enemyUnits.length === 0) {
     newState.gameOver = true;
-    newState.winner = 'attacker';
-    newState.log.push(`Game Over! ${newState.attacker.name} wins!`);
-  } else {
-    // Switch turns
-    newState.currentTurn =
-      newState.currentTurn === 'attacker' ? 'defender' : 'attacker';
+    newState.winner = 'player';
+    newState.log.push('Game Over! Player team wins!');
+  }
+
+  // Advance turn
+  if (!newState.gameOver) {
+    newState.turnOrder = advanceTurn(newState.turnOrder, newState.grid);
   }
 
   return newState;
-}
-
-/**
- * Gets the current active unit
- */
-export function getActiveUnit(state: BattleState): Unit {
-  return state.currentTurn === 'attacker' ? state.attacker : state.defender;
-}
-
-/**
- * Gets the current target unit
- */
-export function getTargetUnit(state: BattleState): Unit {
-  return state.currentTurn === 'attacker' ? state.defender : state.attacker;
 }
