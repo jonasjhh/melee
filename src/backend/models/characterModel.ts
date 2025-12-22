@@ -1,4 +1,4 @@
-import { CharacterModel, SkillType } from './types.js';
+import { CharacterModel, SkillType } from '../core/types.js';
 
 /**
  * Create a character model with specified stats and skills

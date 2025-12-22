@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, executeAction } from '../backend/gameOrchestrator';
-import { getActiveUnit } from '../backend/initiativeSystem';
-import { isDefending } from '../backend/buffSystem';
+import { createGame, executeAction } from '../../backend/game/gameOrchestrator';
+import { getActiveUnit } from '../../backend/systems/initiativeSystem';
+import { isDefending } from '../../backend/systems/buffSystem';
 
 describe('Game Orchestrator', () => {
   it('should create a game with units on grid', () => {

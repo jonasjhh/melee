@@ -1,4 +1,4 @@
-import { TurnOrder, BattleGrid } from './types.js';
+import { TurnOrder, BattleGrid } from '../core/types.js';
 import { getAllUnits } from './gridSystem.js';
 
 export function createTurnOrder(grid: BattleGrid): TurnOrder {

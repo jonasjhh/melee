@@ -1,7 +1,7 @@
-import { GameState, ActionCommand } from './types.js';
-import { getTeamUnits } from './gridSystem.js';
-import { getActiveUnit, advanceTurn } from './initiativeSystem.js';
-import { getEffectivePower, isDefending, applyBuff, removeBuff, applyRegenHealing, decrementBuffDurations } from './buffSystem.js';
+import { GameState, ActionCommand } from '../core/types.js';
+import { getTeamUnits } from '../systems/gridSystem.js';
+import { getActiveUnit, advanceTurn } from '../systems/initiativeSystem.js';
+import { getEffectivePower, isDefending, applyBuff, removeBuff, applyRegenHealing, decrementBuffDurations } from '../systems/buffSystem.js';
 
 export interface BattleConfig {
   attackDamage: number;

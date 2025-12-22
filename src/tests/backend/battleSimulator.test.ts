@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createGame, executeAction } from '../backend/gameOrchestrator';
-import { isDefending } from '../backend/buffSystem';
-import { getActiveUnit } from '../backend/initiativeSystem';
-import { GameState } from '../backend/types';
+import { createGame, executeAction } from '../../backend/game/gameOrchestrator';
+import { isDefending } from '../../backend/systems/buffSystem';
+import { getActiveUnit } from '../../backend/systems/initiativeSystem';
+import { GameState } from '../../backend/core/types';
 
 describe('Battle Simulator', () => {
   let gameState: GameState;
@@ -105,31 +105,43 @@ describe('Battle Simulator', () => {
 
   describe('given player team has one unit with 1 HP', () => {
     it('when enemy attacks player then game should end with enemy victory', () => {
-      // Arrange: Set all player units to 1 HP
+      // Arrange: Set all player units to 1 HP and give enemies high power
       const playerUnits = Array.from(gameState.grid.units.values())
         .filter(u => u.team === 'player');
+
+      const enemyUnits = Array.from(gameState.grid.units.values())
+        .filter(u => u.team === 'enemy');
 
       playerUnits.forEach(unit => {
         gameState.grid.units.set(unit.id, { ...unit, health: 1 });
       });
 
-      // Find an enemy turn or skip to it
+      enemyUnits.forEach(unit => {
+        gameState.grid.units.set(unit.id, { ...unit, power: 100 }); // Ensure one-hit kills
+      });
+
+      // Act: Execute turns until game is over or we hit safety limit
       let currentGame = gameState;
-      const maxTurns = 10; // Safety limit
+      const maxTurns = 50; // Safety limit
       let turnsProcessed = 0;
 
-      while (turnsProcessed < maxTurns) {
+      while (!currentGame.gameOver && turnsProcessed < maxTurns) {
         const activeUnitId = getActiveUnit(currentGame.turnOrder);
         const activeUnit = currentGame.grid.units.get(activeUnitId);
 
         if (activeUnit?.team === 'enemy') {
-          // Act: Enemy attacks player
-          const playerTarget = playerUnits[0];
-          currentGame = executeAction(currentGame, {
-            skill: 'attack',
-            targets: [playerTarget.id],
-          });
-          break;
+          // Enemy attacks a living player
+          const livingPlayer = Array.from(currentGame.grid.units.values())
+            .find(u => u.team === 'player' && u.health > 0);
+
+          if (livingPlayer) {
+            currentGame = executeAction(currentGame, {
+              skill: 'attack',
+              targets: [livingPlayer.id],
+            });
+          } else {
+            break; // No players left
+          }
         } else {
           // Skip player turn
           currentGame = executeAction(currentGame, {
@@ -141,6 +153,7 @@ describe('Battle Simulator', () => {
       }
 
       // Assert
+      expect(turnsProcessed).toBeLessThan(maxTurns); // Verify we didn't hit the safety limit
       expect(currentGame.gameOver).toBe(true);
       expect(currentGame.winner).toBe('enemy');
     });

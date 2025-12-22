@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InBrowserGameService } from '../backend/inBrowserGameService';
-import { GameServiceError } from '../backend/gameService';
-import { getActiveUnit } from '../backend/initiativeSystem';
+import { InBrowserGameService } from '../../backend/services/inBrowserGameService';
+import { GameServiceError } from '../../backend/core/gameService';
+import { getActiveUnit } from '../../backend/systems/initiativeSystem';
 
 describe('InBrowserGameService', () => {
   let service: InBrowserGameService;

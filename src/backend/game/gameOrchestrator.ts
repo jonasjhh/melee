@@ -1,10 +1,10 @@
-import { GameState, ActionCommand, CharacterModel, Party } from './types.js';
-import { createEmptyGrid, placeUnit } from './gridSystem.js';
-import { createTurnOrder, getActiveUnit, isPlayerControlled } from './initiativeSystem.js';
+import { GameState, ActionCommand, CharacterModel, Party } from '../core/types.js';
+import { createEmptyGrid, placeUnit } from '../systems/gridSystem.js';
+import { createTurnOrder, getActiveUnit, isPlayerControlled } from '../systems/initiativeSystem.js';
 import { executeBattleAction } from './battleSimulator.js';
-import { getSkeletonAction } from './ai.js';
-import { CHARACTER_TEMPLATES } from './characterModel.js';
-import { createParty, createUnitsFromParty } from './partyComposer.js';
+import { getSkeletonAction } from '../ai/ai.js';
+import { CHARACTER_TEMPLATES } from '../models/characterModel.js';
+import { createParty, createUnitsFromParty, createUnitsFromPositionedModels, PositionedModel } from './partyComposer.js';
 
 /**
  * Strategy for getting the next action for a unit
@@ -88,6 +88,43 @@ export function createGameWithModels(
   const enemyParty = createParty('enemy-party', 'Enemy Team', enemyModels);
 
   return createGame({ playerParty, enemyParty });
+}
+
+/**
+ * Create a game with positioned character models
+ * Uses exact positions specified in the positioned models
+ */
+export function createGameWithPositionedModels(
+  playerModels: PositionedModel[],
+  enemyModels: PositionedModel[]
+): GameState {
+  let grid = createEmptyGrid();
+
+  // Create units from positioned models
+  const playerUnits = createUnitsFromPositionedModels(playerModels, 'player');
+  const enemyUnits = createUnitsFromPositionedModels(enemyModels, 'enemy');
+
+  // Place all units on grid
+  playerUnits.forEach(unit => {
+    grid = placeUnit(grid, unit, unit.position);
+  });
+
+  enemyUnits.forEach(unit => {
+    grid = placeUnit(grid, unit, unit.position);
+  });
+
+  const turnOrder = createTurnOrder(grid);
+  const playerControlledUnits = new Set(playerUnits.map(u => u.id));
+
+  return {
+    grid,
+    turnOrder,
+    playerControlledUnits,
+    gameOver: false,
+    log: [
+      `Battle begins! Player Team (${playerUnits.length}) vs Enemy Team (${enemyUnits.length})!`
+    ],
+  };
 }
 
 /**

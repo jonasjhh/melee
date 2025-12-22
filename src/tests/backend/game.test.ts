@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createGame, executeAction } from '../backend/gameOrchestrator';
-import { getActiveUnit } from '../backend/initiativeSystem';
+import { createGame, executeAction } from '../../backend/game/gameOrchestrator';
+import { getActiveUnit } from '../../backend/systems/initiativeSystem';
 
 describe('Game Logic', () => {
   it('should create a new game with units', () => {

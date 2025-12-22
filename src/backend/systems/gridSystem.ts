@@ -1,11 +1,12 @@
-import { GridPosition, GridCell, BattleGrid, Unit, TeamId } from './types.js';
+import { GridPosition, GridCell, BattleGrid, Unit, TeamId } from '../core/types.js';
 
 export function createEmptyGrid(): BattleGrid {
   const cells: GridCell[][] = [];
   for (let row = 0; row < 4; row++) {
     cells[row] = [];
-    for (let col = 0; col < 2; col++) {
-      const team: TeamId = row < 2 ? 'player' : 'enemy';
+    for (let col = 0; col < 4; col++) {
+      // Columns 0-1 are player side, columns 2-3 are enemy side
+      const team: TeamId = col < 2 ? 'player' : 'enemy';
       cells[row][col] = {
         position: { row, col },
         unitId: null,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createHero, createSkeleton } from '../backend/unit';
-import { isDefending } from '../backend/buffSystem';
+import { createHero, createSkeleton } from '../../backend/models/unit';
+import { isDefending } from '../../backend/systems/buffSystem';
 
 describe('Unit Creation', () => {
   it('should create a hero with correct properties', () => {

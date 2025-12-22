@@ -1,4 +1,4 @@
-import { Unit, Buff, BuffType } from './types.js';
+import { Unit, Buff, BuffType } from '../core/types.js';
 
 /**
  * Apply a buff to a unit

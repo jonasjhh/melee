@@ -1,5 +1,5 @@
-import { IGameService, GameServiceError } from './gameService.js';
-import { GameState, ActionCommand } from './types.js';
+import { IGameService, GameServiceError } from '../core/gameService.js';
+import { GameState, ActionCommand } from '../core/types.js';
 
 /**
  * API-based implementation of game service

@@ -1,5 +1,13 @@
-import { Party, CharacterModel, Unit, GridPosition, TeamId } from './types.js';
-import { getSkills } from './skillDefinitions.js';
+import { Party, CharacterModel, Unit, GridPosition, TeamId } from '../core/types.js';
+import { getSkills } from '../skills/skillDefinitions.js';
+
+/**
+ * Positioned model - pairs a character model with a grid position
+ */
+export interface PositionedModel {
+  model: CharacterModel;
+  position: GridPosition;
+}
 
 /**
  * Create a party from character models
@@ -61,6 +69,24 @@ export function createUnitsFromParty(
 
     const position: GridPosition = { row, col };
     units.push(createUnitFromModel(model, unitId, position, team));
+  });
+
+  return units;
+}
+
+/**
+ * Create units from positioned models
+ * Uses the exact positions specified in the positioned models
+ */
+export function createUnitsFromPositionedModels(
+  positionedModels: PositionedModel[],
+  team: TeamId
+): Unit[] {
+  const units: Unit[] = [];
+
+  positionedModels.forEach((pm, index) => {
+    const unitId = `${team}-${pm.model.id}-${index}`;
+    units.push(createUnitFromModel(pm.model, unitId, pm.position, team));
   });
 
   return units;

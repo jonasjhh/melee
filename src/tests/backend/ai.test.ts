@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getSkeletonAction } from '../backend/ai';
-import { createGame } from '../backend/gameOrchestrator';
-import { GameState } from '../backend/types';
+import { getSkeletonAction } from '../../backend/ai/ai';
+import { createGame } from '../../backend/game/gameOrchestrator';
+import { GameState } from '../../backend/core/types';
 
 describe('AI Logic', () => {
   let gameState: GameState;
@@ -35,8 +35,8 @@ describe('AI Logic', () => {
       // Act
       const command = getSkeletonAction(gameState, skeletonId);
 
-      // Assert
-      expect(['attack', 'defend', 'heal']).toContain(command.skill);
+      // Assert - Skeleton has attack, defend, skip
+      expect(['attack', 'defend', 'skip']).toContain(command.skill);
     });
 
     it('when getting attack action then should include valid target', () => {
@@ -59,36 +59,24 @@ describe('AI Logic', () => {
       mockRandom.mockRestore();
     });
 
-    it('when getting defend action then should have no targets', () => {
-      // Arrange: Mock Math.random to return defend (middle option, index 1)
-      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.4);
+    it('when using different skills then should select appropriate targets', () => {
+      // Arrange: Test with attack (0) and defend (1)
+      const mockRandom = vi.spyOn(Math, 'random');
 
-      // Act
-      const command = getSkeletonAction(gameState, skeletonId);
+      // Test attack (index 0) - should target player team
+      mockRandom.mockReturnValueOnce(0.1);
+      const attackCommand = getSkeletonAction(gameState, skeletonId);
+      expect(attackCommand.skill).toBe('attack');
+      expect(attackCommand.targets.length).toBeGreaterThan(0);
+      const attackTarget = gameState.grid.units.get(attackCommand.targets[0]);
+      expect(attackTarget).toBeDefined();
+      expect(attackTarget?.team).toBe('player');
 
-      // Assert
-      expect(command.skill).toBe('defend');
-      expect(command.targets.length).toBe(0);
-
-      // Cleanup
-      mockRandom.mockRestore();
-    });
-
-    it('when getting heal action then should target ally with lowest health', () => {
-      // Arrange: Mock Math.random to return heal (last option, index 2)
-      const mockRandom = vi.spyOn(Math, 'random').mockReturnValue(0.8);
-
-      // Act
-      const command = getSkeletonAction(gameState, skeletonId);
-
-      // Assert
-      expect(command.skill).toBe('heal');
-      expect(command.targets.length).toBeGreaterThan(0);
-
-      // Verify target is valid ally
-      const targetUnit = gameState.grid.units.get(command.targets[0]);
-      expect(targetUnit).toBeDefined();
-      expect(targetUnit?.team).toBe('enemy');
+      // Test defend (index 1) - should have no targets
+      mockRandom.mockReturnValueOnce(0.9);
+      const defendCommand = getSkeletonAction(gameState, skeletonId);
+      expect(defendCommand.skill).toBe('defend');
+      expect(defendCommand.targets.length).toBe(0);
 
       // Cleanup
       mockRandom.mockRestore();
@@ -115,11 +103,11 @@ describe('AI Logic', () => {
     });
 
     it('when random returns different values then should get different skills', () => {
-      // Arrange: Create deterministic sequence
+      // Arrange: Create deterministic sequence for skeleton's skills (attack, defend)
       const mockRandom = vi.spyOn(Math, 'random');
-      mockRandom.mockReturnValueOnce(0.1);  // attack
-      mockRandom.mockReturnValueOnce(0.5);  // defend
-      mockRandom.mockReturnValueOnce(0.9);  // heal
+      mockRandom.mockReturnValueOnce(0.1);  // attack (index 0)
+      mockRandom.mockReturnValueOnce(0.9);  // defend (index 1)
+      mockRandom.mockReturnValueOnce(0.2);  // attack (index 0)
 
       // Act
       const command1 = getSkeletonAction(gameState, skeletonId);
@@ -129,7 +117,7 @@ describe('AI Logic', () => {
       // Assert
       expect(command1.skill).toBe('attack');
       expect(command2.skill).toBe('defend');
-      expect(command3.skill).toBe('heal');
+      expect(command3.skill).toBe('attack');
     });
   });
 });

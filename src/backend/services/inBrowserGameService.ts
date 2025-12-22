@@ -1,8 +1,9 @@
-import { IGameService, GameServiceError } from './gameService.js';
-import { GameState, ActionCommand, CharacterModel } from './types.js';
-import { createGame, executeAction, createGameWithModels } from './gameOrchestrator.js';
-import { SKILLS } from './skills.js';
-import { validateTargets } from './targetingSystem.js';
+import { IGameService, GameServiceError } from '../core/gameService.js';
+import { GameState, ActionCommand, CharacterModel } from '../core/types.js';
+import { createGame, executeAction, createGameWithModels, createGameWithPositionedModels } from '../game/gameOrchestrator.js';
+import { SKILLS } from '../skills/skills.js';
+import { validateTargets } from '../systems/targetingSystem.js';
+import { PositionedModel } from '../game/partyComposer.js';
 
 /**
  * In-browser implementation of game service
@@ -12,6 +13,8 @@ export class InBrowserGameService implements IGameService {
   private gameState: GameState;
   private playerModels: CharacterModel[] | null = null;
   private enemyModels: CharacterModel[] | null = null;
+  private playerPositionedModels: PositionedModel[] | null = null;
+  private enemyPositionedModels: PositionedModel[] | null = null;
 
   constructor() {
     this.gameState = createGame();
@@ -25,13 +28,23 @@ export class InBrowserGameService implements IGameService {
     this.enemyModels = enemyModels;
   }
 
+  /**
+   * Set the positioned parties to use for the next game
+   */
+  setPositionedParties(playerModels: PositionedModel[], enemyModels: PositionedModel[]): void {
+    this.playerPositionedModels = playerModels;
+    this.enemyPositionedModels = enemyModels;
+  }
+
   async getState(): Promise<GameState> {
     return Promise.resolve({ ...this.gameState });
   }
 
   async newGame(): Promise<GameState> {
     try {
-      if (this.playerModels && this.enemyModels) {
+      if (this.playerPositionedModels && this.enemyPositionedModels) {
+        this.gameState = createGameWithPositionedModels(this.playerPositionedModels, this.enemyPositionedModels);
+      } else if (this.playerModels && this.enemyModels) {
         this.gameState = createGameWithModels(this.playerModels, this.enemyModels);
       } else {
         this.gameState = createGame();

@@ -1,4 +1,4 @@
-import { Skill, SkillType } from './types.js';
+import { Skill, SkillType } from '../core/types.js';
 
 /**
  * Comprehensive skill definitions with all mechanics

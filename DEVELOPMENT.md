@@ -50,23 +50,49 @@ pnpm build
 
 ```
 src/
-├── backend/           # Core game logic
-│   ├── types.ts      # TypeScript type definitions
-│   ├── skillDefinitions.ts  # Skill definitions and mechanics
-│   ├── characterModel.ts    # Character templates
-│   ├── partyComposer.ts     # Party composition
-│   ├── buffSystem.ts        # Buff/debuff management
-│   ├── gridSystem.ts        # 4x4 battlefield grid
-│   ├── initiativeSystem.ts  # Turn order
-│   ├── targetingSystem.ts   # Target validation
-│   ├── battleSimulator.ts   # Combat execution
-│   ├── gameOrchestrator.ts  # High-level game flow
-│   ├── ai.ts               # Enemy AI
-│   └── unit.ts             # Unit factory functions
-├── frontend/          # React UI
-│   ├── App.tsx       # Main game component
-│   └── App.css       # Styles
-└── tests/            # Test files
+├── backend/                    # Core game logic
+│   ├── core/                   # Core types and interfaces
+│   │   ├── types.ts           # TypeScript type definitions
+│   │   └── gameService.ts     # Game service interface
+│   ├── models/                 # Data models and templates
+│   │   ├── characterModel.ts  # Character templates
+│   │   └── unit.ts            # Unit factory functions
+│   ├── systems/                # Game systems
+│   │   ├── buffSystem.ts      # Buff/debuff management
+│   │   ├── gridSystem.ts      # 4x4 battlefield grid
+│   │   ├── initiativeSystem.ts # Turn order
+│   │   └── targetingSystem.ts # Target validation
+│   ├── skills/                 # Skills and abilities
+│   │   ├── skillDefinitions.ts # Skill definitions and mechanics
+│   │   └── skills.ts          # Skill exports
+│   ├── game/                   # Game logic and orchestration
+│   │   ├── battleSimulator.ts # Combat execution
+│   │   ├── gameOrchestrator.ts # High-level game flow
+│   │   └── partyComposer.ts   # Party composition
+│   ├── ai/                     # AI logic
+│   │   └── ai.ts              # Enemy AI
+│   └── services/               # Service implementations
+│       ├── inBrowserGameService.ts # In-browser game service
+│       └── apiGameService.ts  # API-based game service (future)
+├── frontend/                   # React UI
+│   ├── components/             # Reusable UI components
+│   │   ├── CharacterCard.tsx
+│   │   ├── PlacementGrid.tsx
+│   │   ├── PartySelectionPhase.tsx
+│   │   ├── BattleGrid.tsx
+│   │   ├── SkillButtons.tsx
+│   │   └── BattlePhase.tsx
+│   ├── hooks/                  # Custom React hooks
+│   │   ├── usePartyGrid.ts
+│   │   └── useDragAndDrop.ts
+│   ├── models/                 # Frontend type definitions
+│   │   └── types.ts
+│   ├── App.tsx                 # Main game component
+│   └── App.css                 # Styles
+└── tests/                      # Test files
+    ├── backend/                # Backend tests
+    └── frontend/               # Frontend tests
+        └── hooks/              # Hook tests
 ```
 
 ## Key Architecture Decisions
@@ -76,6 +102,14 @@ src/
 3. **Grid-Based Combat**: 4x4 grid with positional mechanics
 4. **Character Models**: Separation of templates (models) from runtime instances (units)
 5. **Map for Units**: Units stored in `Map<string, Unit>` for fast lookups
+6. **Modular Organization**: Code organized by domain/responsibility:
+   - `core/` - Foundational types and interfaces
+   - `models/` - Data models and entity definitions
+   - `systems/` - Discrete game systems (buffs, grid, initiative, targeting)
+   - `skills/` - Skill definitions and mechanics
+   - `game/` - High-level game orchestration and battle logic
+   - `ai/` - AI decision-making logic
+   - `services/` - Service layer implementations (in-browser, API)
 
 ## Running Tests
 

@@ -1,4 +1,4 @@
-import { GameState, Skill, TargetRequirement, Unit } from './types.js';
+import { GameState, Skill, TargetRequirement, Unit } from '../core/types.js';
 import { getAllUnits } from './gridSystem.js';
 
 export interface ValidationResult {

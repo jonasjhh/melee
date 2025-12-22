@@ -1,5 +1,5 @@
-import { Unit } from './types.js';
-import { DEFAULT_SKILLS } from './skillDefinitions.js';
+import { Unit } from '../core/types.js';
+import { DEFAULT_SKILLS } from '../skills/skillDefinitions.js';
 
 export function createHero(): Unit {
   return {
