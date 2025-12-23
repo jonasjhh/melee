@@ -24,12 +24,12 @@ export function BattleGrid({ gameState, isValidTarget, onUnitClick }: BattleGrid
                 key={`${rowIdx}-${colIdx}`}
                 className={`grid-cell ${cell.team} ${isActive ? 'active' : ''} ${
                   unit && unit.health === 0 ? 'dead' : ''
-                }`}
+                } ${isValid ? 'valid-target' : ''}`}
                 onClick={() => unit && unit.health > 0 && onUnitClick(unit.id)}
                 style={{ cursor: isValid ? 'pointer' : 'default' }}
               >
                 {unit && unit.health > 0 ? (
-                  <div className={`unit ${isValid ? 'valid-target' : ''}`}>
+                  <div className="battle-unit-card">
                     <div className="unit-name">{unit.name}</div>
                     <div className="unit-health-container">
                       <div className="health-bar">
@@ -66,7 +66,7 @@ export function BattleGrid({ gameState, isValidTarget, onUnitClick }: BattleGrid
                     )}
                   </div>
                 ) : unit && unit.health === 0 ? (
-                  <div className="unit dead-unit">
+                  <div className="battle-unit-card dead-unit">
                     <div className="unit-name">{unit.name}</div>
                     <div className="dead-marker">💀</div>
                   </div>

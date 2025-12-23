@@ -56,7 +56,7 @@ describe('Battle Simulator', () => {
       expect(unit && isDefending(unit)).toBe(true);
     });
 
-    it('when executing skip action then should advance turn without changing unit health', () => {
+    it('when executing wait action then should advance turn and apply initiative buff', () => {
       // Arrange
       const activeUnitId = getActiveUnit(gameState.turnOrder);
       const activeUnit = gameState.grid.units.get(activeUnitId);
@@ -65,7 +65,7 @@ describe('Battle Simulator', () => {
 
       // Act
       const newGame = executeAction(gameState, {
-        skill: 'skip',
+        skill: 'wait',
         targets: [],
       });
 
@@ -73,12 +73,20 @@ describe('Battle Simulator', () => {
       const unit = newGame.grid.units.get(activeUnitId);
       expect(unit?.health).toBe(initialHealth);
       expect(newGame.turnOrder.currentUnitIndex).not.toBe(initialTurnIndex);
+      // Check that the haste buff was applied
+      expect(unit?.buffs).toContainEqual(expect.objectContaining({ type: 'haste' }));
     });
 
     it('when executing heal action then should restore target health', () => {
       // Arrange
       const activeUnitId = getActiveUnit(gameState.turnOrder);
       const activeUnit = gameState.grid.units.get(activeUnitId);
+
+      // Set active unit's magic to ensure healing works
+      if (activeUnit) {
+        gameState.grid.units.set(activeUnitId, { ...activeUnit, magic: 25 });
+      }
+
       const targetId = Array.from(gameState.grid.units.values())
         .find(u => u.team === activeUnit?.team && u.health > 0)?.id || '';
       const target = gameState.grid.units.get(targetId);

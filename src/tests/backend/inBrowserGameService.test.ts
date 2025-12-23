@@ -65,10 +65,10 @@ describe('InBrowserGameService', () => {
     expect(state.log.some(entry => entry.includes('takes a defensive stance'))).toBe(true);
   });
 
-  it('should perform a skip action', async () => {
+  it('should perform a wait action', async () => {
     const initialState = await service.getState();
     const state = await service.performAction({
-      skill: 'skip',
+      skill: 'wait',
       targets: [],
     });
 

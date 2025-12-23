@@ -1,5 +1,5 @@
 import { Party, CharacterModel, Unit, GridPosition, TeamId } from '../core/types.js';
-import { getSkills } from '../skills/skillDefinitions.js';
+import { getSkills, DEFAULT_SKILL_TYPES } from '../skills/skillDefinitions.js';
 
 /**
  * Positioned model - pairs a character model with a grid position
@@ -33,17 +33,21 @@ export function createUnitFromModel(
   position: GridPosition,
   team: TeamId
 ): Unit {
+  // Combine default skills with unique skills from the model
+  const allSkillTypes = [...DEFAULT_SKILL_TYPES, ...model.skillTypes];
+
   return {
     id: unitId,
     name: model.name,
     health: model.maxHealth,
     maxHealth: model.maxHealth,
     power: model.power,
+    magic: model.magic,
     defense: model.defense,
     initiative: model.initiative,
     position,
     team,
-    skills: getSkills(model.skillTypes),
+    skills: getSkills(allSkillTypes),
     buffs: [],
     modelId: model.id,
   };

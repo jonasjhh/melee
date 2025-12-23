@@ -8,19 +8,19 @@ import { getValidTargets } from '../systems/targetingSystem.js';
 export function getSkeletonAction(state: GameState, unitId: string): ActionCommand {
   const unit = state.grid.units.get(unitId);
   if (!unit) {
-    return { skill: 'skip', targets: [] };
+    return { skill: 'wait', targets: [] };
   }
 
   // Use the unit's actual available skills
   const availableSkillTypes: SkillType[] = unit.skills.map(s => s.type);
 
-  // Filter out 'skip' for now (use it as fallback)
-  const nonSkipSkills = availableSkillTypes.filter(t => t !== 'skip');
+  // Filter out 'wait' and 'move' for AI selection (use wait as fallback)
+  const usefulSkills = availableSkillTypes.filter(t => t !== 'wait' && t !== 'move');
 
-  // Choose a random skill from available non-skip skills, or skip if none available
-  const chosenSkillType = nonSkipSkills.length > 0
-    ? nonSkipSkills[Math.floor(Math.random() * nonSkipSkills.length)]
-    : 'skip';
+  // Choose a random skill from useful skills, or wait if none available
+  const chosenSkillType = usefulSkills.length > 0
+    ? usefulSkills[Math.floor(Math.random() * usefulSkills.length)]
+    : 'wait';
 
   const skill = SKILLS[chosenSkillType];
   const targets = selectTargets(skill, state, unitId);

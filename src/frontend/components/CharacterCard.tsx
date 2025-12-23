@@ -19,6 +19,7 @@ export function CharacterCard({ template, onDragStart, onDragEnd }: CharacterCar
       <div className="character-stats">
         <p>HP: {template.maxHealth}</p>
         <p>Power: {template.power}</p>
+        <p>Magic: {template.magic}</p>
         <p>Defense: {template.defense}</p>
         <p>Initiative: {template.initiative}</p>
       </div>

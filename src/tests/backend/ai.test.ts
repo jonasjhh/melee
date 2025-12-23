@@ -35,8 +35,8 @@ describe('AI Logic', () => {
       // Act
       const command = getSkeletonAction(gameState, skeletonId);
 
-      // Assert - Skeleton has attack, defend, skip
-      expect(['attack', 'defend', 'skip']).toContain(command.skill);
+      // Assert - Skeleton has attack, defend (wait and move are filtered out by AI)
+      expect(['attack', 'defend']).toContain(command.skill);
     });
 
     it('when getting attack action then should include valid target', () => {
@@ -84,7 +84,7 @@ describe('AI Logic', () => {
   });
 
   describe('given an invalid unit ID', () => {
-    it('when getting skeleton action then should return skip command', () => {
+    it('when getting skeleton action then should return wait command', () => {
       // Arrange
       const invalidUnitId = 'non-existent-unit-id';
 
@@ -92,7 +92,7 @@ describe('AI Logic', () => {
       const command = getSkeletonAction(gameState, invalidUnitId);
 
       // Assert
-      expect(command.skill).toBe('skip');
+      expect(command.skill).toBe('wait');
       expect(command.targets).toEqual([]);
     });
   });

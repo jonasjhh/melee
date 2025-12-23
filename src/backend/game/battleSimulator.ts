@@ -89,7 +89,8 @@ export function executeBattleAction(
       const target = newState.grid.units.get(targetId);
       if (!target) break;
 
-      const healAmount = 30;
+      // Use magic stat for heal amount
+      const healAmount = Math.floor(activeUnit.magic * 1.2); // Magic * 1.2
       const actualHeal = Math.min(healAmount, target.maxHealth - target.health);
 
       const healedTarget = { ...target, health: target.health + actualHeal };
@@ -106,8 +107,8 @@ export function executeBattleAction(
       const target = newState.grid.units.get(targetId);
       if (!target) break;
 
-      const effectivePower = getEffectivePower(activeUnit);
-      const baseDamage = Math.max(1, effectivePower - target.defense);
+      // Use magic stat instead of power
+      const baseDamage = Math.max(1, activeUnit.magic - target.defense);
       const damage = Math.floor(baseDamage * 0.8); // 0.8x damage multiplier
 
       // Remove defending buff after being hit
@@ -134,8 +135,8 @@ export function executeBattleAction(
       const target = newState.grid.units.get(targetId);
       if (!target) break;
 
-      const effectivePower = getEffectivePower(activeUnit);
-      const baseDamage = Math.max(1, effectivePower - target.defense);
+      // Use magic stat instead of power
+      const baseDamage = Math.max(1, activeUnit.magic - target.defense);
       const damage = Math.floor(baseDamage * 0.7); // 0.7x damage multiplier
 
       // Apply damage to target
@@ -189,14 +190,25 @@ export function executeBattleAction(
       const target = newState.grid.units.get(targetId);
       if (!target) break;
 
-      const buffedTarget = applyBuff(target, 'regen', 5, 5);
+      // Use magic stat for regen amount
+      const regenAmount = Math.max(1, Math.floor(activeUnit.magic * 0.2)); // Magic * 0.2 per turn
+      const buffedTarget = applyBuff(target, 'regen', 5, regenAmount);
       newState.grid.units.set(targetId, buffedTarget);
       newState.log.push(`${activeUnit.name} casts Regen on ${target.name}!`);
       break;
     }
 
-    case 'skip': {
-      newState.log.push(`${activeUnit.name} skips their turn.`);
+    case 'wait': {
+      // Apply haste buff for next turn
+      const buffedUnit = applyBuff(activeUnit, 'haste', 1, 5);
+      newState.grid.units.set(activeUnitId, buffedUnit);
+      newState.log.push(`${activeUnit.name} waits and gains initiative for the next turn.`);
+      break;
+    }
+
+    case 'move': {
+      // TODO: Implement movement system
+      newState.log.push(`${activeUnit.name} prepares to move.`);
       break;
     }
   }
